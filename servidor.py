@@ -2,14 +2,35 @@ import socket
 
 # Lista para acompanhar os clientes conectados: cada cliente é identificado por IP, porta, senha e imagens que compartilha
 clientes = []
+# Lista global para acompanhar as imagens compartilhadas e os clientes que as possuem
+imagens_compartilhadas = []
 
 # Função para enviar uma mensagem de erro via UDP
 def enviar_erro(servidor, endereco, mensagem):
     servidor.sendto(f"ERR {mensagem}".encode(), endereco)
 
+# Atualiza a lista global de imagens compartilhadas
+def atualizar_imagens_globais():
+    global imagens_compartilhadas
+    imagens_compartilhadas = []
+    for ip, porta, senha, imagens_cliente in clientes:
+        for md5, nome in imagens_cliente:
+            encontrado = False
+            for imagem in imagens_compartilhadas:
+                if imagem['md5'] == md5:
+                    imagem['clientes'].append(f"{ip}:{porta}")
+                    encontrado = True
+                    break
+            if not encontrado:
+                imagens_compartilhadas.append({
+                    'md5': md5,
+                    'nome': nome,
+                    'clientes': [f"{ip}:{porta}"]
+                })
+
 # Função principal para interpretar e processar mensagens dos clientes
 def processar_mensagem(servidor, mensagem, endereco):
-    global clientes
+    global clientes, imagens_compartilhadas
 
     # Divide a mensagem recebida em partes para identificar o comando
     partes = mensagem.decode().split()
@@ -32,6 +53,9 @@ def processar_mensagem(servidor, mensagem, endereco):
         # Guarda o cliente com o IP, porta, senha e lista de imagens compartilhadas
         clientes.append((endereco[0], porta, senha, imagens_cliente))
 
+        # Atualiza a lista global de imagens
+        atualizar_imagens_globais()
+
         # Confirmação para o cliente com a quantidade de imagens registradas
         servidor.sendto(f"OK {len(imagens_cliente)}_REGISTERED_IMAGES".encode(), endereco)
 
@@ -48,11 +72,25 @@ def processar_mensagem(servidor, mensagem, endereco):
                 imagens_lista = imagens_cliente.split(';')
                 imagens_cliente = [(img.split(',')[0], img.split(',')[1]) for img in imagens_lista]
                 clientes[i] = (ip, p, senha, imagens_cliente)
+                
+                # Atualiza a lista global de imagens
+                atualizar_imagens_globais()
+
                 servidor.sendto(f"OK {len(imagens_cliente)}_REGISTERED_FILES".encode(), endereco)
                 return
 
         # Se a senha não combina com nenhum cliente registrado
         enviar_erro(servidor, endereco, 'IP_REGISTERED_WITH_DIFFERENT_PASSWORD')
+
+    # Se o cliente quer listar as imagens disponíveis
+    elif comando == 'LST':
+        resposta = []
+        for imagem in imagens_compartilhadas:
+            md5 = imagem['md5']
+            nome = imagem['nome']
+            clientes_imagem = ",".join(imagem['clientes'])
+            resposta.append(f"{md5},{nome},{clientes_imagem}")
+        servidor.sendto(";".join(resposta).encode(), endereco)
 
     # Se o cliente quer encerrar sua conexão
     elif comando == 'END':
@@ -65,6 +103,10 @@ def processar_mensagem(servidor, mensagem, endereco):
         for i, (ip, p, s, imgs) in enumerate(clientes):
             if s == senha and ip == endereco[0]:
                 del clientes[i]
+                
+                # Atualiza a lista global de imagens
+                atualizar_imagens_globais()
+
                 servidor.sendto("OK CLIENT_FINISHED".encode(), endereco)
                 return
 
