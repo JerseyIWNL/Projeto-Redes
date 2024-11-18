@@ -12,16 +12,19 @@ def enviar_erro(servidor, endereco, mensagem):
 # Atualiza a lista global de imagens compartilhadas
 def atualizar_imagens_globais():
     global imagens_compartilhadas
-    imagens_compartilhadas = []
+    # Percorre os clientes para garantir que cada imagem deles está atualizada
     for ip, porta, senha, imagens_cliente in clientes:
         for md5, nome in imagens_cliente:
-            encontrado = False
+            # Verifica se a imagem já existe na lista global
             for imagem in imagens_compartilhadas:
                 if imagem['md5'] == md5:
-                    imagem['clientes'].append(f"{ip}:{porta}")
-                    encontrado = True
+                    # Se a imagem já existe, garante que o cliente está listado
+                    cliente_info = f"{ip}:{porta}"
+                    if cliente_info not in imagem['clientes']:
+                        imagem['clientes'].append(cliente_info)
                     break
-            if not encontrado:
+            else:
+                # Se a imagem ainda não existe, adiciona à lista global
                 imagens_compartilhadas.append({
                     'md5': md5,
                     'nome': nome,
