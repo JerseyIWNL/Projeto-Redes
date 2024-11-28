@@ -6,32 +6,43 @@ import random
 import string
 import sys
 import os
+import time
 
 # Constantes
 SERVER_IP = sys.argv[1]
-CLIENT_DIR = sys.argv[2]
 PORTA_UDP = 13377
 
 # Variáveis globais
+client_dir = sys.argv[2]
 porta_tcp = None
 senha = None
 imagens = []
 
 # Função para configurar o ambiente - Criar o diretório que conterá as imagens
 def configurar_ambiente():
-    print("Configurando o ambiente...")
-    # Definindo o diretório onde as imagens serão armazenadas para compartilhamento
-    diretorio_imagens_salvas = os.path.expanduser(CLIENT_DIR) + 'imagens_salvas'
+    print("\nConfigurando o ambiente...")
+    
+    global client_dir
+    
+    # Verifica se 'imagens_salvas' está presente no caminho do diretório
+    if 'imagens_salvas' not in client_dir:
+        if not client_dir.endswith(os.sep):
+            client_dir += os.sep
+        client_dir = os.path.join(client_dir, 'imagens_salvas')
 
-    # Verificando se o diretório existe
-    if not os.path.exists(diretorio_imagens_salvas):
-        # Se não existir, cria o diretório
-        os.makedirs(diretorio_imagens_salvas)
-        print(f"Diretório '{diretorio_imagens_salvas}' criado com sucesso!")
+    # Garante que o caminho final termina com um separador
+    if not client_dir.endswith(os.sep):
+        client_dir += os.sep
+
+    # Verifica se o diretório existe
+    if not os.path.exists(client_dir):
+        # Cria o diretório se ele não existir
+        os.makedirs(client_dir)
+        print(f"Diretório '{client_dir}' criado com sucesso!")
     else:
-        print(f"O diretório '{diretorio_imagens_salvas}' já existe.")
+        print(f"O diretório '{client_dir}' já existe.")
 
-    print("Configuração concluída!")
+    print("Configuração concluída!\n")
 
 # Função para achar uma porta disponível
 def descobre_porta_disponivel():
@@ -40,7 +51,7 @@ def descobre_porta_disponivel():
     s.bind(('', 0))  # Deixa o SO escolher uma porta disponível
     porta_disponivel = s.getsockname()[1]
     s.close()
-    print(f"Porta {porta_disponivel} está disponível!")
+    print(f"Porta {porta_disponivel} está disponível!\n")
     return porta_disponivel
 
 # Função para gerar senha aleatória
@@ -49,11 +60,15 @@ def gerar_senha(comprimento=16):
     senha = ''.join(random.choice(caracteres) for i in range(comprimento))
     return senha
 
+def formatar_imagens():
+    resultado = "'" + "';'".join(imagens) + "'"
+    return resultado
+
 # Função para adicionar as imagens presentes no diretório "imagens_salvas"
 def listar_imagens_diretorio():
     imagens = []
 
-    diretorio = os.path.expanduser(CLIENT_DIR) + 'imagens_salvas'
+    diretorio = os.path.expanduser(client_dir)
 
     # Verifica se o diretório existe
     if not os.path.exists(diretorio):
@@ -98,7 +113,7 @@ def servico_tcp(client):
         md5_requisitado = mensagem.split()[1]
 
         # Define o diretório onde as imagens compartilhadas estão armazenadas
-        diretorio_imagens = os.path.join(os.path.expanduser(CLIENT_DIR), 'imagens_salvas')
+        diretorio_imagens = os.path.expanduser(client_dir)
 
         # Verifica se há algum arquivo que corresponde ao hash MD5 solicitado
         encontrado = False
@@ -136,7 +151,7 @@ def controle_tcp():
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _socket.bind(('', porta_tcp))
     _socket.listen(4096)
-    print(f"Utilizando a porta {porta_tcp}.")
+    print(f"Utilizando a porta {porta_tcp}.\n")
     while True:
         client, addr = _socket.accept()
         start_new_thread(servico_tcp, (client, ))
@@ -147,21 +162,21 @@ def controle_udp(mensagem):
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
             udp_socket.sendto(mensagem.encode(), (SERVER_IP, PORTA_UDP))
             resposta, _ = udp_socket.recvfrom(16384)
-            print(f"Resposta do servidor para '{mensagem}': {resposta.decode()}")
+            print(f"Resposta do servidor para '{mensagem}':\n{resposta.decode()}")
     
     # Cria uma nova thread para enviar a mensagem UDP
     start_new_thread(send_udp, ())
 
 # Função para registrar o cliente no servidor
-def registro_cliente(senha, porta, imagens):
+def registro_cliente(senha, porta):
     # Formata a mensagem de registro
-    mensagem = f"REG {senha} {porta} {imagens}"
+    mensagem = f"REG {senha} {porta} {formatar_imagens()}"
     controle_udp(mensagem)
 
 # Função para atualizar o registro de algum cliente no servidor
-def atualizar_cliente(senha, porta, imagens):
+def atualizar_cliente(senha, porta):
     # Formata a mensagem de atualização
-    mensagem = f"UPD {senha} {porta} {imagens}"
+    mensagem = f"UPD {senha} {porta} {formatar_imagens()}"
     controle_udp(mensagem)
 
 # Função para desconectar um cliente do servidor
@@ -202,54 +217,61 @@ def baixar_imagem():
                 imagem_dados += data
 
             if imagem_dados:
-                # Cria o diretório 'imagens_salvas' se não existir
-                diretorio_imagens = os.path.join(CLIENT_DIR, 'imagens_salvas')
-                if not os.path.exists(diretorio_imagens):
-                    os.makedirs(diretorio_imagens)
-
                 # Salva a imagem no diretório
-                caminho_imagem = os.path.join(diretorio_imagens, f"{md5_imagem}.jpg")
+                caminho_imagem = os.path.join(client_dir, f"{md5_imagem}.jpg")
                 with open(caminho_imagem, "wb") as f:
                     f.write(imagem_dados)
-                print(f"Imagem {md5_imagem}.jpg baixada e salva em {diretorio_imagens}.")
+                print(f"Imagem {md5_imagem}.jpg baixada e salva em {client_dir}.")
 
-                # Adiciona a imagem à lista global
-                imagens.append(f"{md5_imagem}.jpg")
-                print(f"A imagem {md5_imagem}.jpg foi adicionada à lista de imagens.")
             else:
                 print("Erro: Nenhum dado recebido para a imagem.")
 
     except Exception as e:
         print(f"Erro ao baixar imagem: {e}")
 
+    finally:
+        imagens = listar_imagens_diretorio()
+        print(f"A imagem {md5_imagem}.jpg foi adicionada à lista de imagens.")
+
 # Menu de opções do cliente
 def menu():
     while True:
-        print('MENU:')
-        print('    1 - Registrar cliente no servidor')
-        print('    2 - Atualizar registro do cliente')
-        print('    3 - Remover registro do servidor')
-        print('    4 - Listar imagens')
-        print('    5 - Baixar imagens')
-        print('    6 - Sair\n')
+        try:
+            print('MENU:')
+            print('    1 - Registrar cliente no servidor')
+            print('    2 - Atualizar registro do cliente')
+            print('    3 - Remover registro do servidor')
+            print('    4 - Listar imagens')
+            print('    5 - Baixar imagens')
+            print('    6 - Sair\n')
 
-        op = int(input('Escolha uma opção: '))
+            op = int(input('Escolha uma opção: '))
 
-        if op == 1:
-            registro_cliente(senha, porta_tcp, imagens)
-        elif op == 2:
-            atualizar_cliente(senha, porta_tcp, imagens)
-        elif op == 3:
-            desconectar_cliente(senha, porta_tcp)
-        elif op == 4:
-            listar_imagens()
-        elif op == 5:
-            baixar_imagem()
-        elif op == 6:
-            print("Saindo...")
-            break
-        else:
-            print('Opção inválida')
+            if op == 1:
+                registro_cliente(senha, porta_tcp)
+            elif op == 2:
+                atualizar_cliente(senha, porta_tcp)
+            elif op == 3:
+                desconectar_cliente(senha, porta_tcp)
+            elif op == 4:
+                listar_imagens()
+            elif op == 5:
+                baixar_imagem()
+            elif op == 6:
+                desconectar_cliente(senha, porta_tcp)
+                print("Saindo...")
+                break  # Encerra o loop e finaliza o programa
+            else:
+                print('Opção inválida')
+
+            time.sleep(0.1)  # Espera um pouco antes de exibir o menu novamente
+
+        except KeyboardInterrupt:
+            # Quando o Ctrl+C for pressionado
+            print("\nInterrupção do programa detectada.")
+            desconectar_cliente(senha, porta_tcp)  # Garante que o cliente seja desconectado
+            print("Cliente desconectado. Saindo...")
+            break  # Encerra o loop e finaliza o programa
 
 # Função principal do código
 def main():
@@ -262,19 +284,20 @@ def main():
     configurar_ambiente()
 
     # Dando o valor correto às variáveis globais
-    global porta_tcp, senha, imagens
+    global porta_tcp, senha, imagens, ip_client
     porta_tcp = descobre_porta_disponivel()
     senha = gerar_senha()
     imagens = listar_imagens_diretorio()
 
     # Listando as imagens que o cliente deseja compartilhar com outros clientes
-    print(f"Imagens:\n{imagens}")
+    print(f"Imagens:\n{imagens}\n")
 
     # Abrindo uma conexão TCP em uma nova thread
     start_new_thread(controle_tcp, ())
+    time.sleep(0.1)
 
     # Mostrando as opções de ação para o cliente
     menu()
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     main()
