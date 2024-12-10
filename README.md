@@ -1,77 +1,56 @@
-Projeto Redes - Protocolo IDP2PI
+# Projeto: Protocolo IDP2PI - Compartilhamento de Imagens
 
-Este projeto implementa um sistema de compartilhamento de imagens baseado no protocolo IDP2PI. A solução foi desenvolvida utilizando Python e sockets para explorar conceitos de redes de computadores, incluindo arquitetura P2P, comunicação via UDP e TCP, e gerenciamento de mensagens.
+Este projeto implementa um sistema de compartilhamento de imagens baseado no protocolo **IDP2PI**, utilizando uma arquitetura **Peer-to-Peer (P2P)**. O objetivo é capacitar o uso de conceitos de redes de computadores e programação em sockets.
 
-Funcionalidades
+## Funcionalidades Principais
 
-Servidor
+- **Servidor:**
+  - Gerencia a comunicação entre clientes via protocolo UDP.
+  - Mantém uma lista de clientes conectados e imagens compartilhadas.
+  - Responde a comandos específicos, como registro de clientes, atualização de informações, listagem de imagens e desconexão.
 
-Geração e controle de uma lista de clientes conectados.
+- **Cliente:**
+  - Conecta-se ao servidor e interage com outros clientes via protocolo TCP.
+  - Permite listar imagens disponíveis, baixar arquivos de outros clientes e compartilhar suas próprias imagens.
+  - Realiza comunicação paralela utilizando threads.
 
-Gerenciamento de imagens compartilhadas.
+## Estrutura de Arquivos
 
-Resposta a mensagens de:
+- `servidor.py`: Implementação do servidor, responsável pela comunicação centralizada via UDP.
+- `cliente.py`: Implementação do cliente, responsável pela interação direta com outros clientes e o servidor.
+- `cliente_base.py`: Base para a implementação do cliente, incluindo funcionalidades de controle TCP e UDP.
 
-Registro (REG)
+## Tecnologias Utilizadas
 
-Atualização de imagens (UPD)
+- Linguagem: Python 3.8+
+- Protocolos: UDP (Servidor) e TCP (Cliente)
+- Threads para execução paralela de tarefas no cliente.
 
-Listagem de imagens (LST)
+## Como Executar
 
-Desconexão de clientes (END)
+### Servidor
+1. Execute o servidor com o comando:
+   ```bash
+   python3 servidor.py
+   ```
 
-Cliente
+### Cliente
+1. Execute o cliente com o comando:
+   ```bash
+   python3 cliente.py <IP_SERVIDOR> <DIRETORIO_IMAGENS>
+   ```
+   - `<IP_SERVIDOR>`: Endereço IP do servidor.
+   - `<DIRETORIO_IMAGENS>`: Diretório contendo as imagens a serem compartilhadas e armazenadas.
 
-Registro no servidor com informações de imagens e porta TCP.
+2. O cliente permite as seguintes interações:
+   - Listar imagens disponíveis na rede.
+   - Baixar imagens de outros clientes.
+   - Desconectar-se do servidor.
 
-Listagem de imagens compartilhadas na rede.
+## Observações
 
-Download de imagens de outros clientes.
+- Para execução bem-sucedida, garanta que as portas de comunicação estejam disponíveis e não bloqueadas pelo firewall.
+- Certifique-se de utilizar imagens válidas no diretório do cliente e que os hashes MD5 estejam corretos.
 
-Operações paralelas utilizando threads para:
+---
 
-Envio de imagens via TCP.
-
-Interação com o servidor via UDP.
-
-Como Executar
-
-Requisitos
-
-Python 3.8 ou superior
-
-Passos
-
-Clone o repositório:
-
-git clone https://github.com/JerseyIWNL/Projeto-Redes.git
-cd Projeto-Redes
-
-Execute o servidor:
-
-python3 servidor.py
-
-Execute o cliente:
-
-python3 cliente.py <IP_DO_SERVIDOR> <DIRETORIO_DE_IMAGENS>
-
-Substitua <IP_DO_SERVIDOR> pelo IP onde o servidor está rodando.
-
-Substitua <DIRETORIO_DE_IMAGENS> pelo caminho para o diretório contendo as imagens que o cliente deseja compartilhar.
-
-Comandos do Cliente
-
-Listar imagens disponíveis:
-Exibe todas as imagens compartilhadas na rede.
-
-Download de imagem:
-Permite baixar uma imagem de outro cliente conectado.
-
-Desconectar:
-Finaliza a conexão do cliente com o servidor.
-
-Estrutura de Arquivos
-
-servidor.py: Implementação do servidor.
-
-cliente.py: Implementação do cliente.
